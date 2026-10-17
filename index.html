@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snap Strip - photobooth</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shrikhand&family=Nunito:wght@500;700;800&display=swap">
+<style>
+:root{--curtain:#7d1d3a;--curtain2:#5e1229;--paper:#fffaf2;--ink:#2a1420;--flash:#ffe9a8;--btn:#ffd45e}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Nunito,system-ui,sans-serif;color:#fff;
+background:repeating-linear-gradient(90deg,var(--curtain) 0 38px,var(--curtain2) 38px 76px)}
+header{text-align:center;padding:28px 16px 8px}
+h1{font-family:Shrikhand,Georgia,serif;font-weight:400;font-size:clamp(2.2rem,7vw,3.6rem);margin:0;color:var(--flash);text-shadow:3px 3px 0 var(--curtain2)}
+header p{margin:6px 0 0;font-weight:700;opacity:.9}
+main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:28px;max-width:1000px;margin:16px auto 40px;padding:0 16px;align-items:start}
+@media(max-width:760px){main{grid-template-columns:1fr}}
+.cam{background:var(--curtain2);border:6px solid var(--flash);border-radius:18px;padding:14px}
+.view{position:relative;aspect-ratio:4/3;background:#1b0a12;border-radius:10px;overflow:hidden}
+video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#count{position:absolute;inset:0;display:grid;place-items:center;font-family:Shrikhand,serif;font-size:min(30vw,170px);color:#fff;text-shadow:4px 4px 0 rgba(0,0,0,.4);pointer-events:none}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#flash.go{animation:fl .45s ease-out}
+@keyframes fl{0%{opacity:1}100%{opacity:0}}
+#msg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;align-items:center}
+.row label{font-weight:800;margin-right:2px}
+button,.btn{font:inherit;font-weight:800;border:0;border-radius:999px;padding:11px 20px;cursor:pointer;background:var(--btn);color:var(--ink)}
+button:hover:not(:disabled){filter:brightness(1.06)}
+button:disabled{opacity:.5;cursor:default}
+button.ghost{background:transparent;color:#fff;box-shadow:inset 0 0 0 2px #fff}
+button:focus-visible,input:focus-visible,.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.chip{padding:8px 14px;background:transparent;color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.6)}
+.chip[aria-pressed=true]{background:#fff;color:var(--ink);box-shadow:none}
+.sw{width:30px;height:30px;padding:0;border-radius:50%;box-shadow:inset 0 0 0 2px rgba(0,0,0,.35)}
+.sw[aria-pressed=true]{outline:3px solid #fff;outline-offset:2px}
+input[type=text]{font:inherit;padding:10px 14px;border-radius:999px;border:0;flex:1;min-width:140px}
+.out{text-align:center}
+canvas#strip{width:100%;max-width:300px;height:auto;display:block;margin:0 auto;box-shadow:0 12px 30px rgba(0,0,0,.45);transform:rotate(1.5deg);background:var(--paper)}
+.out p{font-weight:700;margin:12px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Snap Strip</h1>
+  <p>Four shots. One strip. Print it anywhere.</p>
+</header>
+<main>
+  <section class="cam" aria-label="Camera">
+    <div class="view">
+      <video id="vid" autoplay playsinline muted></video>
+      <div id="msg">Starting camera...</div>
+      <div id="count" aria-live="assertive"></div>
+      <div id="flash"></div>
+    </div>
+    <div class="row">
+      <button id="go" disabled>Start 4 shots</button>
+      <button id="reset" class="ghost" disabled>Clear</button>
+      <label class="btn ghost" style="box-shadow:inset 0 0 0 2px #fff;background:transparent;color:#fff" tabindex="0">Upload instead
+        <input id="up" type="file" accept="image/*" multiple hidden>
+      </label>
+    </div>
+    <div class="row" role="group" aria-label="Filter">
+      <label>Filter</label>
+      <button class="chip" data-f="none" aria-pressed="true">Normal</button>
+      <button class="chip" data-f="bw" aria-pressed="false">Black &amp; white</button>
+      <button class="chip" data-f="warm" aria-pressed="false">Warm</button>
+    </div>
+    <div class="row" role="group" aria-label="Strip colour">
+      <label>Strip</label>
+      <button class="sw" data-c="#fffaf2" style="background:#fffaf2" aria-label="Cream" aria-pressed="true"></button>
+      <button class="sw" data-c="#ffc2d4" style="background:#ffc2d4" aria-label="Pink" aria-pressed="false"></button>
+      <button class="sw" data-c="#ffe27a" style="background:#ffe27a" aria-label="Yellow" aria-pressed="false"></button>
+      <button class="sw" data-c="#9fd8ff" style="background:#9fd8ff" aria-label="Blue" aria-pressed="false"></button>
+      <button class="sw" data-c="#1f1620" style="background:#1f1620" aria-label="Black" aria-pressed="false"></button>
+    </div>
+    <div class="row">
+      <input id="cap" type="text" maxlength="28" placeholder="Caption, e.g. Meewo + friends, Oct 2026">
+    </div>
+  </section>
+
+  <section class="out" aria-label="Your strip">
+    <canvas id="strip" width="540" height="1640"></canvas>
+    <p id="hint">Take 4 shots to fill your strip.</p>
+    <div class="row" style="justify-content:center">
+      <button id="dl" disabled>Download PNG</button>
+    </div>
+  </section>
+</main>
+
+<script>
+const W=480,H=360,M=30,GAP=20,CAPH=110,SW=540,SH=M+4*H+3*GAP+CAPH;
+const vid=document.getElementById('vid'),msg=document.getElementById('msg'),cnt=document.getElementById('count'),
+ flash=document.getElementById('flash'),go=document.getElementById('go'),reset=document.getElementById('reset'),
+ dl=document.getElementById('dl'),strip=document.getElementById('strip'),sctx=strip.getContext('2d'),
+ cap=document.getElementById('cap'),hint=document.getElementById('hint'),up=document.getElementById('up');
+let shots=[],filter='none',color='#fffaf2',busy=false;
+const FILTERS={none:'none',bw:'grayscale(1) contrast(1.1)',warm:'sepia(.45) saturate(1.3) brightness(1.03)'};
+
+async function startCam(){
+  try{
+    const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1280},height:{ideal:960}},audio:false});
+    vid.srcObject=s;await vid.play();msg.style.display='none';go.disabled=false;
+  }catch(e){
+    msg.innerHTML='Camera is blocked or unavailable.<br>Allow camera access, or use <b>Upload instead</b>.<br>(Camera needs https or localhost.)';
+  }
+}
+function cover(ctx,src,sw,sh,dx,dy,dw,dh){
+  const r=Math.max(dw/sw,dh/sh),w=sw*r,h=sh*r;
+  ctx.drawImage(src,dx+(dw-w)/2,dy+(dh-h)/2,w,h);
+}
+function grab(){
+  const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
+  x.translate(W,0);x.scale(-1,1);cover(x,vid,vid.videoWidth,vid.videoHeight,0,0,W,H);return c;
+}
+function render(){
+  sctx.fillStyle=color;sctx.fillRect(0,0,SW,SH);
+  for(let i=0;i<4;i++){
+    const y=M+i*(H+GAP);
+    if(shots[i]){sctx.save();sctx.filter=FILTERS[filter];sctx.drawImage(shots[i],M,y);sctx.restore();}
+    else{sctx.fillStyle='rgba(0,0,0,.12)';sctx.fillRect(M,y,W,H);}
+  }
+  const dark=color==='#1f1620';
+  sctx.fillStyle=dark?'#fff':'#2a1420';sctx.textAlign='center';
+  sctx.font='44px Shrikhand, Georgia, serif';
+  sctx.fillText(cap.value||'Snap Strip',SW/2,SH-52,SW-60);
+  const full=shots.length===4;dl.disabled=!full;reset.disabled=!shots.length||busy;
+  hint.textContent=full?'Looking good. Download it and print it, or share it.':`Take 4 shots to fill your strip (${shots.length}/4).`;
+}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function run(){
+  if(busy)return;busy=true;go.disabled=true;shots=[];render();
+  for(let i=0;i<4;i++){
+    for(let n=3;n>0;n--){cnt.textContent=n;await wait(850);}
+    cnt.textContent='';flash.classList.remove('go');void flash.offsetWidth;flash.classList.add('go');
+    shots.push(grab());render();await wait(700);
+  }
+  busy=false;go.disabled=false;go.textContent='Retake all 4';render();
+}
+go.onclick=run;
+reset.onclick=()=>{shots=[];go.textContent='Start 4 shots';render();};
+up.onchange=async e=>{
+  const files=[...e.target.files];
+  if(shots.length>=4)shots=[];
+  for(const f of files){
+    if(shots.length>=4)break;
+    const img=new Image();img.src=URL.createObjectURL(f);await img.decode();
+    const c=document.createElement('canvas');c.width=W;c.height=H;cover(c.getContext('2d'),img,img.naturalWidth,img.naturalHeight,0,0,W,H);shots.push(c);
+  }
+  e.target.value='';
+  render();
+};
+document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{
+  filter=b.dataset.f;document.querySelectorAll('[data-f]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  vid.style.filter=FILTERS[filter];render();
+});
+document.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{
+  color=b.dataset.c;document.querySelectorAll('[data-c]').forEach(x=>x.setAttribute('aria-pressed',x===b));render();
+});
+cap.oninput=render;
+dl.onclick=()=>strip.toBlob(b=>{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='snap-strip.png';a.click();},'image/png');
+render();startCam();
+</script>
+</body>
+</html>
