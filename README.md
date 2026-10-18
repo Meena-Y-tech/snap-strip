@@ -4,7 +4,7 @@
 A free photobooth web app. Take 4 photos with a countdown, pick a filter
 and strip colour, add a caption, and download your photo strip as a PNG.
 
-**Live demo:** 
+**Live demo:** https://snap-strip-delta.vercel.app/
 
 ## Features
 - Camera with a 3-2-1 countdown and flash
