@@ -139,6 +139,7 @@ async function run(){
 }
 go.onclick=run;
 reset.onclick=()=>{shots=[];go.textContent='Start 4 shots';render();};
+  //last edited
 up.onchange=async e=>{
   const files=[...e.target.files];
   if(shots.length>=4)shots=[];
